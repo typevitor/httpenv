@@ -28,8 +28,26 @@ jobs:
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Build and export to Docker
+        uses: docker/build-push-action@v2
+        with:
+          push: false
+          load: true # Export to Docker Engine rather than pushing to a registry
+          tags: ${{ steps.docker_meta.outputs.tags }}
+          labels: ${{ steps.docker_meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          platforms: linux/amd64
       
-      - name: Docker meta
+      - name: Run Trivy for all CVEs (non-blocking)
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: ${{ github.run_id }}
+          exit-code: 0
+          format: table
+      
+      - name: Docker Metadata for Final Image Build
         id: docker_meta
         uses: docker/metadata-action@v3
         with:
@@ -37,22 +55,12 @@ jobs:
           flavor: |
             latest=false
           tags: |
-            type=raw,value=05
-            type=raw,value=latest,enable=${{ endsWith(github.ref, github.event.repository.default_branch) }}
-            type=ref,event=pr
-            type=ref,event=branch
-            type=semver,pattern={{version}}
-
-      - name: Docker build
-        uses: docker/build-push-action@v2
-        with:
-          push: false
-          tags: ${{ steps.docker_meta.outputs.tags }}
-          labels: ${{ steps.docker_meta.outputs.labels }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
-          platforms: linux/amd64,linux/arm64,linux/arm/v7
-    
+            type=raw,value=06
+          #  type=raw,value=latest,enable=${{ endsWith(github.ref, github.event.repository.default_branch) }}
+          #  type=ref,event=pr
+          #  type=ref,event=branch
+          #  type=semver,pattern={{version}}
+      
       - name: Find comment for image tags
         uses: peter-evans/find-comment@v1
         if: github.event_name == 'pull_request'
@@ -80,3 +88,13 @@ jobs:
             ${{ steps.docker_meta.outputs.labels }}
             ```
           edit-mode: replace
+    
+      - name: Docker Build and Push to Docker Hub
+        uses: docker/build-push-action@v2
+        with:
+          push: true
+          tags: ${{ steps.docker_meta.outputs.tags }}
+          labels: ${{ steps.docker_meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          platforms: linux/amd64,linux/arm64,linux/arm/v7
