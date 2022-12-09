@@ -39,7 +39,7 @@ jobs:
           push: false
           load: true # Export to Docker Engine rather than pushing to a registry
           tags: ${{ github.run_id }}
-          target: test
+          # target: test #Need to be included in Dockerfile
           cache-from: type=gha
           cache-to: type=gha,mode=max
           platforms: linux/amd64
@@ -62,11 +62,11 @@ jobs:
           format: 'sarif'
           output: 'trivy-results.sarif'
       
-      - name: Upload Trivy scan results to GitHub Security tab
-        uses: github/codeql-action/upload-sarif@v1
-        if: always()
-        with:
-          sarif_file: 'trivy-results.sarif'
+      # - name: Upload Trivy scan results to GitHub Security tab
+      #   uses: github/codeql-action/upload-sarif@v1
+      #   if: always()
+      #   with:
+      #     sarif_file: 'trivy-results.sarif'
       
       - name: Docker Metadata for Final Image Build
         id: docker_meta
